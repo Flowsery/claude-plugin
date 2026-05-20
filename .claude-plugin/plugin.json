@@ -1,0 +1,21 @@
+{
+  "name": "flowsery",
+  "description": "Query web analytics from your AI agent — real-time visitors, traffic breakdowns, revenue, goals, and visitor profiles. Privacy-first, cookie-free.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Flowsery",
+    "url": "https://flowsery.com"
+  },
+  "homepage": "https://flowsery.com/features/agents",
+  "repository": "https://github.com/flowsery/claude-plugin",
+  "license": "MIT",
+  "keywords": [
+    "analytics",
+    "web-analytics",
+    "privacy",
+    "cookie-free",
+    "google-analytics-alternative",
+    "revenue-tracking",
+    "real-time"
+  ]
+}
