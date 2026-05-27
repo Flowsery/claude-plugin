@@ -13,11 +13,13 @@ Query web analytics from Claude Code — **real-time visitors, traffic breakdown
 
 1. Create an account at [flowsery.com](https://flowsery.com)
 2. Add your website and install the tracking snippet
-3. Generate an API key at [Site Settings → API](https://flowsery.com/api-tokens)
+3. Generate a workspace API token at [API Tokens](https://flowsery.com/api-tokens). Workspace tokens start with `flow_ws_` and are the right token type for Claude Code, MCP, OpenClaw, and multi-website analytics access.
 4. From inside Claude Code:
    ```
-   ./scripts/flowsery.js setup --key flow_sk_live_xxxxx
+   ./scripts/flowsery.js setup --key flow_ws_xxxxx
    ```
+
+Website API keys start with `flow_` and are scoped to one website. Use them for single-website server-side ingestion such as custom goals or payments. For agent/MCP workflows, use a workspace token, run `./scripts/flowsery.js websites`, then query a site with `--website-id <id>` or `--domain <domain>`.
 
 ## What it does
 
@@ -51,7 +53,7 @@ For Claude Desktop, Cursor, or other MCP-compatible clients:
     "flowsery": {
       "type": "http",
       "url": "https://mcp.flowsery.com/mcp",
-      "headers": { "Authorization": "Bearer flow_sk_live_your_key" }
+      "headers": { "Authorization": "Bearer flow_ws_your_key" }
     }
   }
 }
