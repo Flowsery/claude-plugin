@@ -48,6 +48,8 @@ The server uses OAuth. There is no API key to set up, and you never handle one.
   the email they use on Flowsery. Then retry the original request.
 - A 403 with `permission_denied` means their workspace role cannot use Flowsery. Editor and
   Admin can; Contributor and Viewer cannot. A workspace admin has to change the role.
+- A 403 with `subscription_required` means the workspace plan no longer includes API
+  access. Signing in again will not help; the plan has to be renewed.
 - Never ask for an API key in chat. Never read keys from environment variables, config
   files or anywhere else on the machine. If the user pastes a key anyway, tell them to
   revoke it in Flowsery, because chat history is not a safe place for it.
@@ -82,37 +84,39 @@ tool works in the default workspace, the one marked `current`.
 - **Totals vs trend.** `get_overview` returns one row. `get_timeseries` buckets the same
   metrics by `interval` (`hour`, `day`, `week`, `month`; default `day`) and adds totals.
   Match the interval to the range: `hour` only for a few days.
-- **Metrics.** `get_overview` accepts `fields` from: `visitors`, `sessions`, `bounce_rate`,
-  `avg_session_duration`, `currency`, `revenue`, `revenue_per_visitor`, `conversion_rate`.
-  `get_timeseries` accepts `visitors`, `sessions`, `revenue`, `conversion_rate`, `name`, and
-  splits revenue into new, renewal and refund. Omit `fields` for all of them.
+- **Metrics.** `get_overview` returns `visitors`, `sessions`, `bounceRate` (percent),
+  `avgSessionDuration` and `avgEngagedTime` (seconds), `revenue`, `renewalRevenue`,
+  `refundedRevenue`, `revenuePerVisitor`, `conversionRate` (percent), the KPI fields and
+  `currency`. Each `get_timeseries` point has `visitors`, `sessions`, `revenue` split into
+  `newRevenue`, `renewalRevenue` and `refundedRevenue`, `conversionRate` and `kpiValue`.
 - **Breakdown rows.** Every split tool returns rows with `value`, `visitors`, `revenue` and
   `percentage`, ordered by visitors descending, with `pagination.total`. `limit` defaults
   to 100 (max 1000); page with `offset`.
 - **Channels first, then sources.** `get_channels` gives the traffic mix. Drill into
   `get_referrers` for domains or `get_campaigns` for tagged traffic. `get_campaigns` only
   shows visits with `utm_campaign`, so untagged traffic is absent there.
-- **Geography goes coarse to fine.** `get_countries`, then `get_regions` (ISO 3166-2 codes
-  such as `US-CA`), then `get_cities`. Pass `filter_country` or `filter_region` before
+- **Geography goes coarse to fine.** `get_countries`, then `get_regions` (region names
+  such as `California`), then `get_cities`. Pass `filter_country` or `filter_region` before
   reading cities, which have a long tail.
 
 ### Dimensions
 
 Use the named tool when one exists; it returns the same rows as `get_breakdown`. Use
-`get_breakdown` with `dimension` for the rest. The 24 values:
+`get_breakdown` with `dimension` for the rest. The 25 values:
 
 - With a named tool: `page`, `referrer`, `channel`, `campaign`, `country`, `region`, `city`,
   `device`, `browser`, `os`, `hostname`, `goal`.
 - `get_breakdown` only: `entry_page` (landing pages), `exit_link` (outbound clicks),
   `browser_version`, `os_version`, `utm_source`, `utm_medium`, `utm_term`, `utm_content`,
-  `ref`, `source`, `all_params` (every tracking parameter at once).
+  `ref`, `source`, `via`, `all_params` (every tracking parameter at once).
 
 ### Filters
 
 Every report tool accepts `filter_*` arguments, and they narrow the whole result.
 `filter_country` plus `filter_device` answers "mobile visitors from Germany" in one call.
 Filters combine with AND. Values are the ones the matching breakdown returns
-("United States", "Organic Search", "/pricing"). Each accepts the same operators: `v` is,
+("United States", "Organic Search", "/pricing", "Mobile"), and matching is case-sensitive.
+Each accepts the same operators: `v` is,
 `!v` is not, `~v` contains, `!~v` does not contain, `a|b` any of.
 
 Available: `filter_country`, `filter_region`, `filter_city`, `filter_device`,
@@ -173,13 +177,13 @@ Issues are problems Flowsery's AI found in session recordings, deduplicated acro
 1. `list_issues` takes `status` (`open`, `in_progress`, `resolved`, `suspended`),
    `severity` (`low`, `medium`, `high`, `critical`), `search`, `sort` (`severity` or
    `recency`), `limit` and `offset`. Without `status` it returns open, in progress and
-   resolved together. Re-rank by `sessionsAffected` when impact matters more than severity.
+   resolved together. Re-rank by `sessionsCount` when impact matters more than severity.
 2. `get_issue` with `issueId` only for the few you report on. It returns occurrences,
    affected sessions, steps to replicate, comments and any linked Linear or Jira ticket.
 3. Suspended issues are hidden unless you ask for `status: suspended`. An issue that seems
    to have vanished was probably suspended, not fixed.
-4. On a free trial, issues beyond the first 10 fail with "Upgrade to view this issue". Say
-   so plainly.
+4. On a free trial only the first 10 issues are listed, and any other issue fails with
+   "Upgrade to view this issue". Say so plainly.
 
 `references/reports.md` has the report recipes: weekly health report, "what broke this
 week", launch review and paying-customer sources.
@@ -200,6 +204,7 @@ payments is permanent and needs a restated, explicit "yes".
 - 401 or expired token: see Sign-in above.
 - 403 with `workspace_access_denied`: the `workspaceId` is not one this sign-in reaches.
   Call `list_workspaces` and pick an id from it.
+- 403 with `permission_denied` or `subscription_required`: see Sign-in above.
 - 429: rate limited. Wait and retry once; do not loop.
 - A delete without a filter fails before reaching the API with "At least one filter
   required". Ask the user what to delete; never widen the delete to make it pass.

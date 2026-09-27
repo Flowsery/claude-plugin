@@ -29,14 +29,13 @@ Ask for a "yes" first, showing the website and exactly what will be recorded.
   (`newsletter_signup`, `add-to-cart`).
 - `visitorUid` is the `_fs_vid` cookie value of a visitor the tracking script has seen.
   Omit it for an anonymous completion.
-- `metadata` holds up to 10 key-value pairs (lowercase keys up to 64 characters, values up
-  to 255).
+- `metadata` holds up to 10 string key-value pairs; more fails with a 400.
 - Each call appends one completion. Calling it twice counts the goal twice.
 - The completion is written asynchronously and shows up in `get_goals` shortly after.
 
 `track_payment` takes `amount` (major units, 29.99), `currency` (`USD`, `EUR`) and
 `transactionId`, plus optional `visitorUid`, `sessionUid`, `email`, `name`, `customerId`,
-`isRenewal` and `isRefund`.
+`isRenewal`, `isRefund` and `timestamp` (ISO 8601, for backfilling; defaults to now).
 
 - Skip it when the site's payment provider (Stripe, LemonSqueezy, Polar and others) is
   already connected, or the revenue is counted twice.

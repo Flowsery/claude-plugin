@@ -20,14 +20,16 @@ The plugin talks to Flowsery only through its MCP server at `mcp.flowsery.com`, 
 
 Once installed, Claude can:
 
-- **Overview** — aggregated site metrics (visitors, sessions, bounce rate, revenue)
-- **Time series** — trend data by hour, day, week, or month
-- **Realtime** — current active visitor count and geographic map
-- **Breakdowns** — top pages, referrers, countries, devices, browsers, OS, campaigns, channels (24 dimensions)
-- **Visitor profiles** — full journey with identity, activity timeline, and revenue
-- **Goal tracking** — track custom events with metadata
-- **Revenue tracking** — record payments for attribution (Stripe / LemonSqueezy / Polar auto-tracked)
-- **Filters** — drill down by country, device, browser, UTM params, page, channel, and more
+- **Overview**: aggregated site metrics (visitors, sessions, bounce rate, revenue)
+- **Time series**: trend data by hour, day, week, or month
+- **Realtime**: current active visitor count and geographic map
+- **Breakdowns**: top pages, referrers, countries, devices, browsers, OS, campaigns, channels (25 dimensions)
+- **Visitor profiles**: full journey with identity, activity timeline, and revenue
+- **Goal tracking**: track custom events with metadata
+- **Revenue tracking**: record payments for attribution (Stripe / LemonSqueezy / Polar auto-tracked)
+- **Filters**: drill down by country, device, browser, UTM params, page, channel, and more
+- **AI-detected issues**: list, read and update the status of issues found in session recordings
+- **Workspaces**: pick any workspace your sign-in reaches, across organizations
 
 ## Example
 

@@ -8,8 +8,8 @@ Every recipe starts with `list_websites` and `get_metadata` for the site, and pa
 For each website the user wants covered (ask when `list_websites` returns several):
 
 1. `get_overview` for last week and for the week before, both in the site's timezone.
-   `fields`: `visitors,sessions,bounce_rate,conversion_rate,revenue`.
-2. `list_issues` with `status: open`. Re-rank by `sessionsAffected`, descending.
+   Read `visitors`, `sessions`, `bounceRate`, `conversionRate` and `revenue`.
+2. `list_issues` with `status: open`. Re-rank by `sessionsCount`, descending.
 3. `get_issue` on the top three, for the steps to replicate.
 4. `get_pages` and `get_channels` for last week, `limit: 10`.
 
@@ -31,7 +31,7 @@ If nothing meaningful changed, say "quiet week" and list only the open issues.
 
 `list_issues` with `status: open` and `sort: recency`. Keep the ones whose `lastSeenAt`
 falls in the last 7 days (the tool has no date filter), and re-rank those by
-`sessionsAffected`. For the top five, `get_issue`. For each: title, sessions affected,
+`sessionsCount`. For the top five, `get_issue`. For each: title, sessions affected,
 whether it is getting worse (compare first and last seen), the steps to replicate, and
 one line on what it likely costs based on the page it sits on. Then say which one a
 developer should pick up first and which ones look like the same underlying cause. If
