@@ -1,7 +1,7 @@
 {
   "name": "flowsery",
   "description": "Query web analytics from your AI agent — real-time visitors, traffic breakdowns, revenue, goals, and visitor profiles. Privacy-first, cookie-free.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Flowsery",
     "url": "https://flowsery.com"
@@ -17,5 +17,7 @@
     "google-analytics-alternative",
     "revenue-tracking",
     "real-time"
-  ]
+  ],
+  "icon": "assets/icon.svg",
+  "privacyPolicyUrl": "https://flowsery.com/privacy"
 }

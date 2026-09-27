@@ -11,15 +11,10 @@ Query web analytics from Claude Code — **real-time visitors, traffic breakdown
 
 ## Setup
 
-1. Create an account at [flowsery.com](https://flowsery.com)
-2. Add your website and install the tracking snippet
-3. Generate a workspace API token at [API Tokens](https://flowsery.com/api-tokens). Workspace tokens start with `flow_ws_` and are the right token type for Claude Code, MCP, OpenClaw, and multi-website analytics access.
-4. From inside Claude Code:
-   ```
-   ./scripts/flowsery.js setup --key flow_ws_xxxxx
-   ```
+1. Create an account at [flowsery.com](https://flowsery.com), add your website and install the tracking snippet.
+2. In Claude Code, run `/mcp`, pick `flowsery` and sign in with the email you use on Flowsery.
 
-Website API keys start with `flow_` and are scoped to one website. Use them for single-website server-side ingestion such as custom goals or payments. For agent/MCP workflows, use a workspace token, run `./scripts/flowsery.js websites`, then query a site with `--website-id <id>` or `--domain <domain>`.
+The plugin talks to Flowsery only through its MCP server at `mcp.flowsery.com`, signed in with OAuth. It never asks for an API key and reads nothing from your environment or config files.
 
 ## What it does
 
@@ -65,6 +60,7 @@ For Claude Desktop, Cursor, or other MCP-compatible clients:
 - AI Agents: [flowsery.com/features/agents](https://flowsery.com/features/agents)
 - API Documentation: [flowsery.com/docs/api-introduction](https://flowsery.com/docs/api-introduction)
 - API Tokens: [flowsery.com/api-tokens](https://flowsery.com/api-tokens)
+- Privacy policy: [flowsery.com/privacy](https://flowsery.com/privacy)
 
 ## License
 

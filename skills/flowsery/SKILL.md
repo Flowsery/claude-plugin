@@ -1,259 +1,214 @@
 ---
 name: flowsery
 description: >
-  Query web analytics data from Flowsery Analytics — a privacy-first web analytics platform.
-  Retrieve real-time visitor counts, time series data, breakdowns by 24 dimensions (device,
-  page, country, referrer, campaign, channel, UTM params, exit links, etc.), visitor profiles
-  with activity timelines, custom goal tracking, and revenue attribution.
-last-updated: 2026-09-07
-allowed-tools: Bash(./scripts/flowsery.js:*)
+  Answer web analytics questions and find what is broken on the user's websites through the
+  Flowsery MCP tools (Flowsery Analytics, privacy-first web analytics). Covers visitors,
+  sessions, bounce rate, pages, landing pages, referrers, channels, UTM campaigns, countries,
+  devices, browsers, goals, conversion rate and revenue attribution, live visitors, single
+  visitor journeys, and the bugs, broken flows and UX problems Flowsery's AI found in session
+  recordings. Use this skill WHENEVER the user asks how their site is doing, where traffic comes
+  from, what converts, how much revenue a source brought, how many people are on the site right
+  now, what broke this week, why signups dropped, or wants to record a goal or payment or mark an
+  issue fixed. Trigger it even for short asks like "traffic this week?", "top pages", "is
+  checkout broken?", "how did the launch do" or "where do paying customers come from".
+last-updated: 2026-09-27
 ---
 
-# Flowsery Analytics Skill
+# Flowsery
 
-Autonomously query and manage web analytics via [Flowsery Analytics](https://flowsery.com) API. Privacy-first analytics with real-time data, revenue tracking, and 24 breakdown dimensions.
+You read the user's Flowsery workspace through the flowsery MCP server's tools. The
+plugin connects it to `https://mcp.flowsery.com/mcp` with OAuth. The tool prefix depends
+on how it is installed, for example `mcp__plugin_flowsery_flowsery__<tool>`. Each tool
+carries its own parameter descriptions; read them. This skill is the operating logic on top.
 
-> **Freshness check**: If more than 30 days have passed since the `last-updated` date above, inform the user that this skill may be outdated and point them to the update options below.
+> If more than 30 days have passed since `last-updated`, tell the user this skill may be
+> outdated and that `/plugin marketplace update` pulls the latest version.
 
-## Keeping This Skill Updated
+## Tools by job
 
-**Source**: [github.com/flowsery/agent](https://github.com/flowsery/agent)
+| Job | Tools |
+|-----|-------|
+| Which workspace | `list_workspaces` |
+| Which websites, timezone, currency | `list_websites`, `get_metadata` |
+| Totals for a window | `get_overview` |
+| Trend over time | `get_timeseries` |
+| Split by one dimension | `get_pages`, `get_referrers`, `get_channels`, `get_campaigns`, `get_countries`, `get_regions`, `get_cities`, `get_devices`, `get_browsers`, `get_operating_systems`, `get_hostnames`, `get_goals`, `get_breakdown` |
+| Right now | `get_realtime`, `get_realtime_map` |
+| One visitor | `get_visitor` |
+| What broke | `list_issues`, `get_issue`, `update_issue_status` |
+| Record data | `track_goal`, `track_payment` |
+| Erase data | `delete_goals`, `delete_payments` |
 
-Update methods by installation type:
+## Sign-in
 
-| Installation       | How to update                                       |
-| ------------------ | --------------------------------------------------- |
-| CLI (`npx skills`) | `npx skills update`                                 |
-| Claude Code plugin | `/plugin marketplace update`                        |
-| Cursor             | Remote rules auto-sync from GitHub                  |
-| Manual             | Pull latest from repo or re-copy `skills/flowsery/` |
+The server uses OAuth. There is no API key to set up, and you never handle one.
 
-## Setup
+- If the flowsery tools are missing, or a call returns 401, "Authentication required" or
+  "Access token has expired", tell the user to run `/mcp`, pick `flowsery` and sign in with
+  the email they use on Flowsery. Then retry the original request.
+- A 403 with `permission_denied` means their workspace role cannot use Flowsery. Editor and
+  Admin can; Contributor and Viewer cannot. A workspace admin has to change the role.
+- Never ask for an API key in chat. Never read keys from environment variables, config
+  files or anywhere else on the machine. If the user pastes a key anyway, tell them to
+  revoke it in Flowsery, because chat history is not a safe place for it.
 
-1. Create a Flowsery account at [flowsery.com](https://flowsery.com)
-2. Add your website and install the tracking snippet
-3. Go to the workspace-level **API Tokens** page and create a workspace API token for API/MCP/OpenClaw access
-4. Store your API key in workspace `.env`:
-   ```
-   FLOWSERY_API_KEY=flow_ws_xxxxx
-   ```
+## Workspace and website selection
 
-Or run the setup command:
+A sign-in reaches every workspace the user belongs to, and each workspace has its own
+websites. `list_workspaces` returns them with `id`, `name`, `organization`, `role`,
+`isDefault` and `current`. Every other tool takes an optional `workspaceId`; without it the
+tool works in the default workspace, the one marked `current`.
 
-```
-./scripts/flowsery.js setup --key flow_ws_xxxxx
-```
+1. Call `list_websites` first. It returns each website's `id`, `domain`, `timezone`,
+   `currency` and `kpi` in the workspace. If it lists nothing, or the site the user asks
+   about is missing, call `list_workspaces` and look in the other workspaces by passing
+   their `workspaceId`. If no workspace has a website, point the user to
+   https://flowsery.com to add one and install the tracking snippet.
+   Once you pick a workspace, pass the same `workspaceId` on every call about it: website
+   ids from one workspace do not exist in another.
+2. Every other tool takes `websiteId` or `domain` from that list. Omitting both fails with
+   "Website ID or domain is required". Ask which site when there are several and the
+   question does not say.
+3. Call `get_metadata` with the chosen site to learn its timezone and currency, and pass
+   that `timezone` to every date-range tool.
 
-Token types:
+## Answering a question
 
-- Workspace API tokens start with `flow_ws_`. Use these for agents, MCP, OpenClaw, and multi-website API access. They can list and query every website in the workspace.
-- Website API keys start with `flow_`. Use these only for a single website, especially server-side event ingestion such as custom goals and payments.
-- When using a workspace token, call `websites` first and then pass `--website-id <id>` or `--domain <domain>` to analytics commands.
+- **Pick the window on purpose.** `startAt` and `endAt` take ISO 8601 dates or datetimes.
+  Without them the tools use the last 30 days ending now. Turn "this month" or "last week"
+  into real dates in the site's timezone, and say which window the numbers cover.
+- **Compare like with like.** For "is it up or down", run the same tool on the previous
+  window of the same length and give both numbers.
+- **Totals vs trend.** `get_overview` returns one row. `get_timeseries` buckets the same
+  metrics by `interval` (`hour`, `day`, `week`, `month`; default `day`) and adds totals.
+  Match the interval to the range: `hour` only for a few days.
+- **Metrics.** `get_overview` accepts `fields` from: `visitors`, `sessions`, `bounce_rate`,
+  `avg_session_duration`, `currency`, `revenue`, `revenue_per_visitor`, `conversion_rate`.
+  `get_timeseries` accepts `visitors`, `sessions`, `revenue`, `conversion_rate`, `name`, and
+  splits revenue into new, renewal and refund. Omit `fields` for all of them.
+- **Breakdown rows.** Every split tool returns rows with `value`, `visitors`, `revenue` and
+  `percentage`, ordered by visitors descending, with `pagination.total`. `limit` defaults
+  to 100 (max 1000); page with `offset`.
+- **Channels first, then sources.** `get_channels` gives the traffic mix. Drill into
+  `get_referrers` for domains or `get_campaigns` for tagged traffic. `get_campaigns` only
+  shows visits with `utm_campaign`, so untagged traffic is absent there.
+- **Geography goes coarse to fine.** `get_countries`, then `get_regions` (ISO 3166-2 codes
+  such as `US-CA`), then `get_cities`. Pass `filter_country` or `filter_region` before
+  reading cities, which have a long tail.
 
-## Auth
+### Dimensions
 
-All requests use Bearer token:
+Use the named tool when one exists; it returns the same rows as `get_breakdown`. Use
+`get_breakdown` with `dimension` for the rest. The 24 values:
 
-```
-Authorization: Bearer <API_KEY>
-```
+- With a named tool: `page`, `referrer`, `channel`, `campaign`, `country`, `region`, `city`,
+  `device`, `browser`, `os`, `hostname`, `goal`.
+- `get_breakdown` only: `entry_page` (landing pages), `exit_link` (outbound clicks),
+  `browser_version`, `os_version`, `utm_source`, `utm_medium`, `utm_term`, `utm_content`,
+  `ref`, `source`, `all_params` (every tracking parameter at once).
 
-Base URL: `https://analytics.flowsery.com/analytics`
+### Filters
 
-**Config priority** (highest to lowest):
+Every report tool accepts `filter_*` arguments, and they narrow the whole result.
+`filter_country` plus `filter_device` answers "mobile visitors from Germany" in one call.
+Filters combine with AND. Values are the ones the matching breakdown returns
+("United States", "Organic Search", "/pricing"). Each accepts the same operators: `v` is,
+`!v` is not, `~v` contains, `!~v` does not contain, `a|b` any of.
 
-1. `FLOWSERY_API_KEY` environment variable
-2. `./.flowsery/config.json` (project-local)
-3. `~/.config/flowsery/config.json` (user-global)
+Available: `filter_country`, `filter_region`, `filter_city`, `filter_device`,
+`filter_browser`, `filter_os`, `filter_referrer`, `filter_ref`, `filter_source`,
+`filter_via`, `filter_utm_source`, `filter_utm_medium`, `filter_utm_campaign`,
+`filter_utm_term`, `filter_utm_content`, `filter_page`, `filter_hostname`,
+`filter_entry_page`, `filter_channel`, `filter_goal`.
 
-### Handling "API key not found" errors
+`get_realtime`, `get_realtime_map` and `get_visitor` take only the website selector (plus
+`visitorId` for `get_visitor`): no dates, filters or pagination.
 
-When you receive an "API key not found" error from the CLI:
+### Channels
 
-1. **Tell the user to run the setup command** — setup requires user input, so you cannot run it on their behalf:
-   ```bash
-   ./scripts/flowsery.js setup --key flow_ws_xxxxx
-   ```
-2. **Stop and wait** — do not continue with the task. You cannot query analytics or perform any API operations without a valid API key.
-3. **DO NOT** search for API keys in env files, keychains, or other locations.
+Flowsery classifies traffic from the referrer and UTM tags into GA4-aligned channels:
+Organic Search, Paid Search, Organic Social, Paid Social, Email, Display, Referral,
+Direct, Affiliate, Video, SMS and Audio.
 
-Get your API key at: https://flowsery.com/api-tokens
+### Revenue attribution
 
-> **Note for agents**: All script paths in this document (e.g., `./scripts/flowsery.js`) are relative to the skill directory where this SKILL.md file is located. Resolve them accordingly based on where the skill is installed.
+Revenue comes from connected payment providers (Stripe, LemonSqueezy, Polar and others)
+or from `track_payment`. Each payment is tied to the visitor who paid, so every breakdown
+carries a `revenue` column. For "where do paying customers come from", rank by revenue,
+not visitors. A payment with no matching visitor is kept but its source shows as Unknown.
+If revenue is zero, say no payments are recorded rather than that nothing sold. Revenue is
+sensitive: ask how much detail the user wants before listing individual payments.
 
-## CLI Commands
+### Goals
 
-### Setup & Info
+`get_goals` lists every goal (custom events plus the auto-created `payment` and
+`free_trial` goals) with completions in the window. `get_overview` gives
+`conversion_rate` against the site's KPI goal. Use `get_breakdown` with `dimension: goal`
+when you want the goal list as ordinary breakdown rows, and `filter_goal` on any report to
+see only visitors who completed a goal ("which channels bring signups").
 
-| Command                                   | Description                                          |
-| ----------------------------------------- | ---------------------------------------------------- |
-| `./scripts/flowsery.js setup --key <key>` | Configure API key                                    |
-| `./scripts/flowsery.js websites`          | List websites the token can read (id, domain, timezone, currency, KPI). Call first with a workspace token |
-| `./scripts/flowsery.js metadata`          | Website settings (domain, timezone, currency, KPI). Without `--website-id` on a workspace token it returns the website list |
-| `./scripts/flowsery.js help`              | List all available commands                          |
+## Live visitors
 
-### Analytics Queries
+`get_realtime` returns the count of visitors active in the last 5 minutes. `get_realtime_map`
+returns those visitors with location, device and current page, without names, emails or
+revenue. Poll either at most once every 5 seconds. For geography over a date range use
+`get_countries` or `get_cities`.
 
-| Command                                           | Description                                                        |
-| ------------------------------------------------- | ------------------------------------------------------------------ |
-| `./scripts/flowsery.js overview`                  | Headline totals for a date range as one row (visitors, sessions, bounce rate, revenue, conversion rate). Default window: last 30 days |
-| `./scripts/flowsery.js timeseries --interval day` | The same metrics bucketed by hour/day/week/month with totals. Use for trends; match the interval to the range |
-| `./scripts/flowsery.js realtime`                  | Visitors active in the last 5 minutes. No date or filter flags, no history; poll at most every 5 s |
-| `./scripts/flowsery.js realtime:map`              | Active visitors with geographic location for a live map. Use `countries`/`cities` for geography over a date range |
+## Visitor profiles and personal data
 
-### Breakdown Reports
+`get_visitor` takes `visitorId`: the visitor record ID from `get_realtime_map` or the
+dashboard visitor view, not the `_fs_vid` cookie value. It returns identity, source,
+activity, completed goals, revenue, the identified profile (`userId`, name, email; null
+when anonymous) and a timeline of pageviews, goals and payments, newest first, capped at
+100 items per list. An unknown id fails with "Visitor not found".
 
-All breakdown commands return rows with `value`, `visitors`, `revenue` and `percentage`, ordered by visitors descending, plus `pagination.total`. They accept the date range (default: last 30 days), `--limit` (default 100, max 1000), `--offset` and every filter flag.
+Call it only when the user asks about a specific visitor, and show only what answers the
+question. Prefer `get_realtime_map` for "who is on the site". Never paste a visitor's email
+or name into a report.
 
-| Command                                             | Description                                                                                                                  |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `./scripts/flowsery.js pages`                       | Page paths ranked by visitors. Use `breakdown --dimension entry_page` for landing pages, `exit_link` for outbound clicks        |
-| `./scripts/flowsery.js referrers`                   | Referring domains. Use `channels` for the GA4-style mix and `campaigns` for UTM-tagged traffic                                |
-| `./scripts/flowsery.js countries`                   | Visitors by country (coarsest geography). Add `--filter_country` to `regions`/`cities` to drill in                            |
-| `./scripts/flowsery.js regions`                     | Visitors by region/state (ISO 3166-2 code such as `US-CA`)                                                                   |
-| `./scripts/flowsery.js cities`                      | Visitors by city. Long tail: filter by country or region first, or raise `--limit`                                           |
-| `./scripts/flowsery.js devices`                     | Desktop vs mobile vs tablet (three rows). `browsers`/`operating-systems` give the software split                             |
-| `./scripts/flowsery.js browsers`                    | Browser names only. Versions via `breakdown --dimension browser_version`                                                     |
-| `./scripts/flowsery.js operating-systems`           | OS names only. Versions via `breakdown --dimension os_version`                                                               |
-| `./scripts/flowsery.js campaigns`                   | `utm_campaign` values; untagged traffic is absent. Other UTM params via `breakdown --dimension utm_source` etc.               |
-| `./scripts/flowsery.js hostnames`                   | Visitors per hostname, for sites tracking several domains or subdomains                                                      |
-| `./scripts/flowsery.js channels`                    | GA4-aligned channels (Organic Search, Paid Social, Direct...) from referrer and UTM. Start here for the traffic mix           |
-| `./scripts/flowsery.js goals`                       | Every goal (including auto-created `payment`/`free_trial`) with completions in the window. Filter and limit flags are ignored |
-| `./scripts/flowsery.js breakdown --dimension <dim>` | Any of 24 dimensions; the only route to `entry_page`, `exit_link`, `*_version`, `utm_*`, `ref`, `source`, `all_params`       |
+## What broke
 
-### Visitor Data
+Issues are problems Flowsery's AI found in session recordings, deduplicated across sessions.
 
-| Command                                           | Description                                 |
-| ------------------------------------------------- | ------------------------------------------- |
-| `./scripts/flowsery.js visitor --id <visitor_id>` | Full profile of one visitor (PII) with a newest-first timeline; lists hold the 100 most recent items; unknown ids return 404 |
+1. `list_issues` takes `status` (`open`, `in_progress`, `resolved`, `suspended`),
+   `severity` (`low`, `medium`, `high`, `critical`), `search`, `sort` (`severity` or
+   `recency`), `limit` and `offset`. Without `status` it returns open, in progress and
+   resolved together. Re-rank by `sessionsAffected` when impact matters more than severity.
+2. `get_issue` with `issueId` only for the few you report on. It returns occurrences,
+   affected sessions, steps to replicate, comments and any linked Linear or Jira ticket.
+3. Suspended issues are hidden unless you ask for `status: suspended`. An issue that seems
+   to have vanished was probably suspended, not fixed.
+4. On a free trial, issues beyond the first 10 fail with "Upgrade to view this issue". Say
+   so plainly.
 
-### Goal Tracking
+`references/reports.md` has the report recipes: weekly health report, "what broke this
+week", launch review and paying-customer sources.
 
-| Command                                                                  | Description                  |
-| ------------------------------------------------------------------------ | ---------------------------- |
-| `./scripts/flowsery.js goals:create --name "signup" --visitor-uid <uid>` | Append one goal completion. The goal is created on first use; repeating the call counts it twice. Omit `--visitor-uid` for an anonymous completion |
-| `./scripts/flowsery.js goals:delete --name "signup"`                     | Permanently delete completions matching all given filters (AND). Needs at least one of `--visitor-id`, `--name`, `--start-at`, `--end-at`; confirm first |
+## Writes
 
-### Revenue Tracking
+Read `references/writes.md` before calling `update_issue_status`, `track_goal`,
+`track_payment`, `delete_goals` or `delete_payments`. In short: recording a goal or payment
+only records analytics and never charges anyone or issues a refund. Deleting goals or
+payments is permanent and needs a restated, explicit "yes".
 
-| Command                                                                                        | Description                      |
-| ---------------------------------------------------------------------------------------------- | -------------------------------- |
-| `./scripts/flowsery.js payments:create --amount 29.99 --currency USD --transaction-id pay_123` | Record a payment. The transaction id must be unique; `--refund` with an existing id marks that payment refunded instead of adding a record. Also records a `payment` goal |
-| `./scripts/flowsery.js payments:delete --transaction-id pay_123`                               | Permanently delete payments matching all given filters (AND). Needs at least one of `--transaction-id`, `--visitor-id`, `--start-at`, `--end-at`; prefer `--refund` to keep history |
+## Errors
 
-### Common Flags (all query commands)
+- Tool errors come back as text starting with `Error:` or `API error:`. Read the message
+  before retrying.
+- "Website ID or domain is required": call `list_websites` and pass `websiteId` or
+  `domain`. Not a sign-in problem.
+- 401 or expired token: see Sign-in above.
+- 403 with `workspace_access_denied`: the `workspaceId` is not one this sign-in reaches.
+  Call `list_workspaces` and pick an id from it.
+- 429: rate limited. Wait and retry once; do not loop.
+- A delete without a filter fails before reaching the API with "At least one filter
+  required". Ask the user what to delete; never widen the delete to make it pass.
 
-| Flag                   | Description                                                     |
-| ---------------------- | --------------------------------------------------------------- |
-| `--startAt <ISO date>` | Start of date range (e.g. `2026-01-01`). Default: 30 days ago   |
-| `--endAt <ISO date>`   | End of date range (e.g. `2026-01-31`). Default: now             |
-| `--timezone <IANA>`    | Timezone (e.g. `America/New_York`). Falls back to site default. |
-| `--limit <n>`          | Max rows (1-1000, default: 100), ordered by visitors descending |
-| `--offset <n>`         | Rows to skip; compare with `pagination.total`                   |
-| `--fields <list>`      | Comma-separated metrics to include                              |
-| `--website-id <id>`    | Website to query when using a workspace token                   |
-| `--domain <domain>`    | Website domain to query when using a workspace token            |
+## Output style
 
-### Filter Flags (all query commands)
-
-Filters combine with AND. Values are the ones the matching breakdown returns, and every filter accepts the same operators: `v` is, `!v` is not, `~v` contains, `!~v` does not contain, `a|b` any of.
-
-| Flag                            | Description                                     |
-| ------------------------------- | ----------------------------------------------- |
-| `--filter_country <value>`      | Filter by country                               |
-| `--filter_region <value>`       | Filter by region                                |
-| `--filter_city <value>`         | Filter by city                                  |
-| `--filter_device <value>`       | Filter by device type (desktop, mobile, tablet) |
-| `--filter_browser <value>`      | Filter by browser                               |
-| `--filter_os <value>`           | Filter by operating system                      |
-| `--filter_referrer <value>`     | Filter by referrer domain                       |
-| `--filter_ref <value>`          | Filter by `ref` URL parameter                   |
-| `--filter_source <value>`       | Filter by `source` URL parameter                |
-| `--filter_via <value>`          | Filter by `via` URL parameter                   |
-| `--filter_utm_source <value>`   | Filter by UTM source                            |
-| `--filter_utm_medium <value>`   | Filter by UTM medium                            |
-| `--filter_utm_campaign <value>` | Filter by UTM campaign                          |
-| `--filter_utm_term <value>`     | Filter by UTM term                              |
-| `--filter_utm_content <value>`  | Filter by UTM content                           |
-| `--filter_page <value>`         | Filter by page path                             |
-| `--filter_hostname <value>`     | Filter by hostname                              |
-| `--filter_entry_page <value>`   | Filter by entry page                            |
-| `--filter_channel <value>`      | Filter by marketing channel                     |
-| `--filter_goal <value>`         | Filter by goal name                             |
-
-## Breakdown Dimensions
-
-Use these exact values with `breakdown --dimension`:
-
-`device`, `page`, `entry_page`, `exit_link`, `hostname`, `referrer`, `channel`, `campaign`, `goal`, `country`, `region`, `city`, `browser`, `browser_version`, `os`, `os_version`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `ref`, `source`, `all_params`
-
-## Time Series Intervals
-
-| Interval | Description                                  |
-| -------- | -------------------------------------------- |
-| `hour`   | Hourly buckets (defaults to last 24h)        |
-| `day`    | Daily buckets (defaults to last 30 days)     |
-| `week`   | Weekly buckets (defaults to last 30 days)    |
-| `month`  | Monthly buckets (defaults to last 12 months) |
-
-## Marketing Channels
-
-Flowsery auto-classifies traffic into GA4-aligned channels:
-
-- **Organic Search** — Google, Bing, DuckDuckGo, etc.
-- **Paid Search** — utm_medium: cpc, ppc, paid_search
-- **Organic Social** — Facebook, Twitter, LinkedIn, Reddit, etc.
-- **Paid Social** — utm_medium: paid_social, social_cpc
-- **Email** — utm_medium: email, newsletter
-- **Display** — utm_medium: display, banner, cpm
-- **Referral** — Other websites
-- **Direct** — No referrer
-- **Affiliate** — utm_medium: affiliate, partner
-- **Video** — utm_medium: video
-- **SMS** — utm_medium: sms
-- **Audio** — utm_medium: audio, podcast
-
-## MCP Integration
-
-Flowsery has a native MCP server. If you're using Claude Desktop, Cursor, or any MCP-compatible client, you can connect directly.
-
-**Claude Code / Cursor / Other MCP clients** — add to your MCP config:
-
-```json
-{
-  "mcpServers": {
-    "flowsery": {
-      "type": "http",
-      "url": "https://mcp.flowsery.com/mcp",
-      "headers": {
-        "Authorization": "Bearer flow_ws_your_key"
-      }
-    }
-  }
-}
-```
-
-## Automation Guidelines
-
-- **Read-only by default** — most commands are safe GET queries with no side effects
-- **Delete with caution** — `goals:delete` and `payments:delete` are irreversible; always confirm with the user before running
-- **Revenue data is sensitive** — when displaying payment or revenue data, ask the user about the appropriate level of detail
-- **Rate limits** — avoid polling `realtime` more than once per 5 seconds
-- **Date ranges** — when the user says "this month" or "last week", calculate the actual ISO dates; without dates the API uses the last 30 days ending now, so say which window the numbers cover
-- **Refunds** — reverse a charge with `payments:create --refund` and the original transaction id; `payments:delete` erases the record from every report
-- **Workspace tokens** — always call `websites` first, choose the correct website, and include `--website-id` or `--domain` on subsequent commands
-- **Timezone** — call `metadata --website-id <id>` first to get the site's timezone; use it for all subsequent queries
-
-## Tips
-
-- Call `websites` first when using a workspace token; then call `metadata --website-id <id>` to get the site timezone and currency
-- Use `overview` for a quick health check of the site
-- Use `timeseries --interval day` for trend analysis and charting
-- Combine filters to drill down: `--filter_country "United States" --filter_device mobile`
-- Use `breakdown --dimension all_params` to see all tracking parameter performance at once
-- Check `realtime` before and after deploying content changes to see immediate impact
-- Use `visitor --id <id>` to build a full picture of a specific user's journey
-- For revenue questions, use `overview --fields revenue,conversion_rate` or `timeseries --fields revenue`
-- Use `channels` to understand your traffic mix before drilling into specific sources with `referrers` or `campaigns`
-- Use `breakdown --dimension entry_page` for landing pages; `pages` ranks every page viewed
-- `goals` ignores filter and limit flags; use `breakdown --dimension goal` when you need them
+- Answers: the number first, then one line of context (the window, the comparison, the
+  likely cause).
+- Breakdowns: a short table, top 10 unless asked for more.
+- Reports: the headline and one recommendation first, then detail.
+- Round numbers for reading (12.4k visitors, 3.1% conversion) unless the user wants exact
+  values.
