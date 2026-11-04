@@ -1,8 +1,8 @@
-# Flowsery — Claude Code Plugin
+# Flowsery plugin for Claude Code and Hermes Agent
 
 Query web analytics from Claude Code — **real-time visitors, traffic breakdowns, revenue, goals, and full visitor profiles.** Privacy-first, cookie-free analytics. Alternative to Google Analytics.
 
-## Install
+## Install in Claude Code
 
 ```
 /plugin marketplace add flowsery/claude-plugin
@@ -15,6 +15,46 @@ Query web analytics from Claude Code — **real-time visitors, traffic breakdown
 2. In Claude Code, run `/mcp`, pick `flowsery` and sign in with the email you use on Flowsery.
 
 The plugin talks to Flowsery only through its MCP server at `mcp.flowsery.com`, signed in with OAuth. It never asks for an API key and reads nothing from your environment or config files.
+
+## Install in Hermes Agent
+
+You need Hermes Agent 0.21.6 or newer and Node.js 20.18.1 or newer with `npx` on your `PATH`.
+
+From the Hermes plugin catalog:
+
+```bash
+hermes plugins install flowsery
+hermes plugins enable flowsery
+```
+
+Or straight from GitHub:
+
+```bash
+hermes plugins install Flowsery/claude-plugin --no-enable
+hermes plugins enable flowsery
+```
+
+Start a new session. The first time the server starts, your browser opens the Flowsery sign-in page. Sign in with the email you use on Flowsery and approve. The token is kept and refreshed, so you sign in once. If the tools don't show up after you sign in, run `/reload-mcp`.
+
+The Hermes package is `plugin.json`, `mcp.json` and the skill in `skills/flowsery/`. It ships no code of its own. Before you install, know that:
+
+- `mcp.json` runs the pinned `mcp-remote@0.1.49` through `npx`, which downloads it from npm on first use. It opens a local callback port for the sign-in and stores the OAuth tokens in `~/.mcp-auth`.
+- Every tool call goes to `mcp.flowsery.com` and acts on your Flowsery account, with your own role in each workspace. The server decides the tool set at runtime, so the pinned commit doesn't cover it.
+- `plugin.json` marks the server `untrusted`. Hermes asks before every tool the server doesn't mark read-only (tracking a goal, deleting goals and changing an issue's status), and refuses those tools in cron and other unattended runs.
+- `track_goal` records an event in your analytics, and `delete_goals` removes goal events for good.
+- The package sends no telemetry.
+
+On a server or another machine without a browser, skip the plugin and add the server to `~/.hermes/config.yaml` with an API key from [flowsery.com/api-tokens](https://flowsery.com/api-tokens):
+
+```yaml
+mcp_servers:
+  flowsery:
+    url: "https://mcp.flowsery.com/mcp"
+    headers:
+      Authorization: "Bearer ${FLOWSERY_API_KEY}"
+```
+
+Put `FLOWSERY_API_KEY=...` in `~/.hermes/.env`. The key works like a password for your Flowsery account, so don't paste it into a chat.
 
 ## What it does
 
