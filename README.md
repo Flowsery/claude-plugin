@@ -1,11 +1,31 @@
 # Flowsery plugin for Claude Code and Hermes Agent
 
-Query web analytics from Claude Code — **real-time visitors, traffic breakdowns, revenue, goals, and full visitor profiles.** Privacy-first, cookie-free analytics. Alternative to Google Analytics.
+Ask Flowsery, the privacy-first, cookie-free web analytics, about live visitors, traffic breakdowns, goals, revenue, visitor journeys and the bugs its AI found in session recordings, from Claude Code or Hermes Agent.
+
+## What this repo is
+
+This repo is the Flowsery plugin for Claude Code and Hermes Agent, and nothing else. Both read the same package: `.claude-plugin/plugin.json`, `.mcp.json` and `.claude-plugin/marketplace.json` for Claude Code, `plugin.json` and `mcp.json` for Hermes, and one skill in [`skills/flowsery/`](./skills/flowsery). The plugin connects to the hosted MCP server at `https://mcp.flowsery.com/mcp`, signs in with OAuth and never asks for an API key. Its skill only calls MCP tools and ships no script, because the Claude plugin directory and the Hermes catalog both review for that.
+
+Everything else lives in [Flowsery/agent](https://github.com/Flowsery/agent): the agent skill for `npx skills add` (a CLI script with an API key), the source of the MCP server, and the Gemini CLI extension.
+
+| You use | Install | Sign-in |
+| --- | --- | --- |
+| Claude Code | `/plugin install flowsery --marketplace Flowsery/claude-plugin` | OAuth |
+| Hermes Agent | `hermes plugins install flowsery` | OAuth |
+| Gemini CLI | `gemini extensions install https://github.com/Flowsery/agent` | OAuth |
+| Claude Desktop, Cursor, ChatGPT or any MCP client | Add `https://mcp.flowsery.com/mcp` as a remote server | OAuth, or an API key header |
+| Cursor, Codex, Windsurf, Claude Code or any agent with skills | `npx skills add Flowsery/agent` | API key |
 
 ## Install in Claude Code
 
 ```
-/plugin marketplace add flowsery/claude-plugin
+/plugin install flowsery --marketplace Flowsery/claude-plugin
+```
+
+On Claude Code older than 2.1.275, add the marketplace first:
+
+```
+/plugin marketplace add Flowsery/claude-plugin
 /plugin install flowsery
 ```
 
@@ -58,50 +78,32 @@ Put `FLOWSERY_API_KEY=...` in `~/.hermes/.env`. The key works like a password fo
 
 ## What it does
 
-Once installed, Claude can:
+Once installed, Claude or Hermes can:
 
-- **Overview**: aggregated site metrics (visitors, sessions, bounce rate, revenue)
-- **Time series**: trend data by hour, day, week, or month
-- **Realtime**: current active visitor count and geographic map
-- **Breakdowns**: top pages, referrers, countries, devices, browsers, OS, campaigns, channels (25 dimensions)
-- **Visitor profiles**: full journey with identity, activity timeline, and revenue
-- **Goal tracking**: track custom events with metadata
-- **Revenue tracking**: record payments for attribution (Stripe / LemonSqueezy / Polar auto-tracked)
-- **Filters**: drill down by country, device, browser, UTM params, page, channel, and more
-- **AI-detected issues**: list, read and update the status of issues found in session recordings
-- **Workspaces**: pick any workspace your sign-in reaches, across organizations
+- Headline totals for any date range: visitors, sessions, bounce rate, revenue and conversion rate
+- Trends by hour, day, week or month
+- Visitors active right now, with a live map
+- Breakdowns by any of 25 dimensions: pages, landing pages, referrers, channels, UTM campaigns, countries, regions, cities, devices, browsers and more
+- Filters on country, device, browser, UTM parameters, page and channel
+- Goals and their completions, and recording or deleting custom goal events
+- One visitor's journey with their activity timeline
+- The issues Flowsery's AI found in session recordings, and changing their status
+- Work in any workspace your sign-in reaches, across organizations
 
 ## Example
 
 ```
 You: How's my traffic this week?
-Claude: Your site had 2,847 visitors and 3,912 sessions this week.
-        Bounce rate is 62%. Revenue: $1,240 from 18 conversions.
-        Top sources: Google (41%), Direct (28%), Twitter (12%).
-```
-
-## Alternative: MCP
-
-For Claude Desktop, Cursor, or other MCP-compatible clients:
-
-```json
-{
-  "mcpServers": {
-    "flowsery": {
-      "type": "http",
-      "url": "https://mcp.flowsery.com/mcp",
-      "headers": { "Authorization": "Bearer flow_ws_your_key" }
-    }
-  }
-}
+Agent: Your site had 2,847 visitors and 3,912 sessions this week.
+       Bounce rate is 62%. Revenue: $1,240 from 18 conversions.
+       Top sources: Google (41%), Direct (28%), Twitter (12%).
 ```
 
 ## Links
 
 - Product: [flowsery.com](https://flowsery.com)
-- AI Agents: [flowsery.com/features/agents](https://flowsery.com/features/agents)
-- API Documentation: [flowsery.com/docs/api-introduction](https://flowsery.com/docs/api-introduction)
-- API Tokens: [flowsery.com/api-tokens](https://flowsery.com/api-tokens)
+- AI agents: [flowsery.com/features/agents](https://flowsery.com/features/agents)
+- Skill, MCP server and Gemini extension: [Flowsery/agent](https://github.com/Flowsery/agent)
 - Privacy policy: [flowsery.com/privacy](https://flowsery.com/privacy)
 
 ## License
