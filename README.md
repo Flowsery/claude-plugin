@@ -76,28 +76,95 @@ mcp_servers:
 
 Put `FLOWSERY_API_KEY=...` in `~/.hermes/.env`. The key works like a password for your Flowsery account, so don't paste it into a chat.
 
-## What it does
+## Example prompts
 
-Once installed, Claude or Hermes can:
+- "How's my traffic this week compared to last week?"
+- "Which channels and campaigns brought paying customers this month?"
+- "Visitors dropped on Tuesday. Check pages, referrers and devices and tell me why."
+- "How many people are on the site right now, and where are they?"
+- "How much traffic did ChatGPT, Perplexity and other AI assistants send us this month?"
+- "What did Flowsery find in session recordings this week? Mark the checkout bug as in progress."
+- "Show me the journey of the visitor who just started a free trial."
+- "Which landing pages convert best for mobile visitors from Germany?"
 
-- Headline totals for any date range: visitors, sessions, bounce rate, revenue and conversion rate
-- Trends by hour, day, week or month
-- Visitors active right now, with a live map
-- Breakdowns by any of 25 dimensions: pages, landing pages, referrers, channels, UTM campaigns, countries, regions, cities, devices, browsers and more
-- Filters on country, device, browser, UTM parameters, page and channel
-- Goals and their completions, and recording or deleting custom goal events
-- One visitor's journey with their activity timeline
-- The issues Flowsery's AI found in session recordings, and changing their status
-- Work in any workspace your sign-in reaches, across organizations
+## Tools
 
-## Example
+26 tools. Every report takes a date range, a timezone and filters on country, region, city, device, browser, OS, page, hostname, referrer, channel and UTM parameters. Recording payments for revenue attribution is in the agent skill, not the MCP server.
 
-```
-You: How's my traffic this week?
-Agent: Your site had 2,847 visitors and 3,912 sessions this week.
-       Bounce rate is 62%. Revenue: $1,240 from 18 conversions.
-       Top sources: Google (41%), Direct (28%), Twitter (12%).
-```
+### Workspaces and websites
+
+| Tool | What it does | Changes data |
+| --- | --- | --- |
+| `list_workspaces` | List the workspaces the sign-in can act in; pass an id as `workspaceId` to any other tool | No |
+| `list_websites` | List the websites the token can read, with domain, timezone, currency and KPI goal. Call it first | No |
+| `get_metadata` | One website's settings: domain, timezone, currency, KPI goal, logo and colors | No |
+
+### Traffic
+
+| Tool | What it does | Changes data |
+| --- | --- | --- |
+| `get_overview` | Headline totals for a date range: visitors, sessions, bounce rate, session duration, revenue, revenue per visitor and conversion rate | No |
+| `get_timeseries` | The same metrics by hour, day, week or month, with new, renewal and refunded revenue | No |
+| `get_realtime` | Visitors active in the last 5 minutes | No |
+| `get_realtime_map` | Active visitors with city-level location for a live map; coordinates rounded to 0.1 degrees, no IP addresses | No |
+
+### Breakdowns
+
+| Tool | What it does | Changes data |
+| --- | --- | --- |
+| `get_pages` | Page paths ranked by visitors | No |
+| `get_referrers` | Referring sites ranked by visitors, with known sources such as Google, ChatGPT and Reddit named | No |
+| `get_channels` | Traffic grouped into GA4-style channels: Organic Search, Paid Social, Email, Direct and more | No |
+| `get_campaigns` | UTM campaigns ranked by visitors | No |
+| `get_countries` | Visitors by country | No |
+| `get_regions` | Visitors by region or state | No |
+| `get_cities` | Visitors by city | No |
+| `get_devices` | Desktop, mobile and tablet split | No |
+| `get_browsers` | Visitors by browser | No |
+| `get_operating_systems` | Visitors by operating system | No |
+| `get_hostnames` | Visitors by hostname, for sites that track several domains or subdomains | No |
+| `get_breakdown` | Group visitors by any of 25 dimensions, including entry page, exit link, browser and OS versions and every UTM parameter | No |
+
+### Goals and visitors
+
+| Tool | What it does | Changes data |
+| --- | --- | --- |
+| `get_goals` | Every goal, including the automatic payment and free trial goals, with completions in the window | No |
+| `track_goal` | Record one completion of a custom goal; the goal is created on first use | Yes |
+| `delete_goals` | Permanently delete goal completions that match the filters | Yes |
+| `get_visitor` | One visitor's location, device, source, visits, goals, revenue and timeline | No |
+
+### Session issues
+
+| Tool | What it does | Changes data |
+| --- | --- | --- |
+| `list_issues` | Bugs, broken flows and UX problems the AI found in session recordings, ranked by severity | No |
+| `get_issue` | One issue with its occurrences, sessions, steps to replicate, comments and linked Linear or Jira ticket | No |
+| `update_issue_status` | Set an issue to open, in progress, resolved or suspended | Yes |
+
+## Roles, permissions and safety
+
+- Every call runs with the signed-in member's role in the workspace. Reads need `workspace.read`; tracking or deleting goals and changing an issue's status need `flowsery.write`, which Admin and Editor hold.
+- Read-only tools carry `readOnlyHint`. Only `track_goal`, `delete_goals` and `update_issue_status` change anything, so clients that confirm writes ask before those three.
+- Visitor tools return the analytics of your own websites. `get_realtime_map` rounds coordinates to 0.1 degrees, and no tool returns IP addresses or billing details.
+- A website key (`flow_`) reaches one website; a workspace token (`flow_ws_`) or an OAuth sign-in reaches every website in the workspace.
+
+## FAQ
+
+**Do I need an API key?**
+No. Point your client at `https://mcp.flowsery.com/mcp` and sign in with the email you use on Flowsery. Keys are for headless agents and clients without OAuth.
+
+**Does the agent see personal data?**
+It sees what your Flowsery dashboard shows for your own websites: approximate location, device, source and activity. No IP addresses, and live map coordinates are rounded.
+
+**Can it change my analytics?**
+Only three tools write: `track_goal`, `delete_goals` and `update_issue_status`. Everything else is read-only.
+
+**Does it work with several websites?**
+Yes. Call `list_websites` and pass a `websiteId` or `domain` to the report tools.
+
+**Can I use Flowsery outside Claude Code and Hermes?**
+Yes. Claude Desktop, ChatGPT, Cursor, Windsurf, VS Code, Codex and Gemini CLI connect to the same server at `https://mcp.flowsery.com/mcp`. The setup for each is in [Flowsery/agent](https://github.com/Flowsery/agent#setup-by-client).
 
 ## Links
 
