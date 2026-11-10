@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Query web analytics from your AI agent — real-time visitors, traffic breakdowns, revenue, goals, and visitor profiles. Privacy-first, cookie-free.",
-    "version": "1.4.0"
+    "version": "1.4.1"
   },
   "plugins": [
     {
       "name": "flowsery",
       "source": "./",
       "description": "Query web analytics from your AI agent — real-time visitors, traffic breakdowns, revenue, goals, and visitor profiles. Privacy-first, cookie-free.",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "author": {
         "name": "Flowsery",
         "url": "https://flowsery.com"

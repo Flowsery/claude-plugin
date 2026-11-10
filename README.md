@@ -60,7 +60,7 @@ The Hermes package is `plugin.json`, `mcp.json` and the skill in `skills/flowser
 
 - `mcp.json` runs the pinned `mcp-remote@0.1.49` through `npx`, which downloads it from npm on first use. It opens a local callback port for the sign-in and stores the OAuth tokens in `~/.mcp-auth`.
 - Every tool call goes to `mcp.flowsery.com` and acts on your Flowsery account, with your own role in each workspace. The server decides the tool set at runtime, so the pinned commit doesn't cover it.
-- `plugin.json` marks the server `untrusted`. Hermes asks before every tool the server doesn't mark read-only (tracking a goal, deleting goals and changing an issue's status), and refuses those tools in cron and other unattended runs.
+- `plugin.json` marks the server `untrusted`. Hermes asks before every tool the server doesn't mark read-only (tracking or deleting goals and payments, and changing an issue's status), and refuses those tools in cron and other unattended runs.
 - `track_goal` records an event in your analytics, and `delete_goals` removes goal events for good.
 - The package sends no telemetry.
 
@@ -89,7 +89,7 @@ Put `FLOWSERY_API_KEY=...` in `~/.hermes/.env`. The key works like a password fo
 
 ## Tools
 
-26 tools. Every report takes a date range, a timezone and filters on country, region, city, device, browser, OS, page, hostname, referrer, channel and UTM parameters. Recording payments for revenue attribution is in the agent skill, not the MCP server.
+28 tools. Every report takes a date range, a timezone and filters on country, region, city, device, browser, OS, page, hostname, referrer, channel and UTM parameters.
 
 ### Workspaces and websites
 
@@ -132,6 +132,8 @@ Put `FLOWSERY_API_KEY=...` in `~/.hermes/.env`. The key works like a password fo
 | `get_goals` | Every goal, including the automatic payment and free trial goals, with completions in the window | No |
 | `track_goal` | Record one completion of a custom goal; the goal is created on first use | Yes |
 | `delete_goals` | Permanently delete goal completions that match the filters | Yes |
+| `track_payment` | Record a payment for revenue attribution, or mark one refunded; never charges anyone | Yes |
+| `delete_payments` | Permanently delete payment records that match the filters | Yes |
 | `get_visitor` | One visitor's location, device, source, visits, goals, revenue and timeline | No |
 
 ### Session issues
@@ -144,8 +146,8 @@ Put `FLOWSERY_API_KEY=...` in `~/.hermes/.env`. The key works like a password fo
 
 ## Roles, permissions and safety
 
-- Every call runs with the signed-in member's role in the workspace. Reads need `workspace.read`; tracking or deleting goals and changing an issue's status need `flowsery.write`, which Admin and Editor hold.
-- Read-only tools carry `readOnlyHint`. Only `track_goal`, `delete_goals` and `update_issue_status` change anything, so clients that confirm writes ask before those three.
+- Every call runs with the signed-in member's role in the workspace. Reads need `workspace.read`; tracking or deleting goals and payments and changing an issue's status need `flowsery.write`, which Admin and Editor hold.
+- Read-only tools carry `readOnlyHint`. Only `track_goal`, `delete_goals`, `track_payment`, `delete_payments` and `update_issue_status` change anything, so clients that confirm writes ask before those five. Payment tools change analytics records only; they never charge, refund or touch a payment provider.
 - Visitor tools return the analytics of your own websites. `get_realtime_map` rounds coordinates to 0.1 degrees, and no tool returns IP addresses or billing details.
 - A website key (`flow_`) reaches one website; a workspace token (`flow_ws_`) or an OAuth sign-in reaches every website in the workspace.
 
@@ -158,7 +160,7 @@ No. Point your client at `https://mcp.flowsery.com/mcp` and sign in with the ema
 It sees what your Flowsery dashboard shows for your own websites: approximate location, device, source and activity. No IP addresses, and live map coordinates are rounded.
 
 **Can it change my analytics?**
-Only three tools write: `track_goal`, `delete_goals` and `update_issue_status`. Everything else is read-only.
+Five tools write: `track_goal`, `delete_goals`, `track_payment`, `delete_payments` and `update_issue_status`. Everything else is read-only.
 
 **Does it work with several websites?**
 Yes. Call `list_websites` and pass a `websiteId` or `domain` to the report tools.
